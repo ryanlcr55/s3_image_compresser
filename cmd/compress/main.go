@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 	"time"
@@ -10,17 +11,20 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/h2non/bimg"
+)
+
+const (
+	region string = "ap-northeast-1"
+	bucket string = "ryan-li-practice"
+	// Sub floder
+	prefix string = ""
+
+	// If object Size greater than this value, then compress
+	boundarySize int = 1024 * 100
 )
 
 var wg sync.WaitGroup
-var region string = "ap-northeast-1"
-var bucket string = "ryan-li-practice"
-
-// Sub floder
-var prefix string = ""
-
-// If object Size greater than this value, then compress
-var boundarySize int = 1024 * 100
 
 func main() {
 
@@ -57,11 +61,7 @@ func exitErrorf(msg string, args ...interface{}) {
 
 func handler(sess *session.Session, item *s3.Object) {
 	defer wg.Done()
-	fmt.Println("Name:         ", *item.Key)
-	//	fmt.Println("Last modified:", *item.LastModified)
-	//	fmt.Println("Size:         ", *item.Size)
-	//	fmt.Println("Storage class:", *item.StorageClass)
-	//	fmt.Println("")
+	fmt.Println("Processing Name:         ", *item.Key)
 
 	downLoadFile(sess, *item.Key)
 }
@@ -80,14 +80,27 @@ func downLoadFile(sess *session.Session, key string) {
 	if err != nil {
 		exitErrorf("Unable to Down File Key: %q, %v", key, err)
 	}
+	buffer, bufferErr := io.ReadAll(out.Body)
+	if bufferErr != nil {
+		exitErrorf("Cant buffer the file", key, err)
+	}
+
+	processed := compressFile(buffer)
+	fmt.Println(processed)
 
 	defer out.Body.Close()
 }
 
-func compressFile() {
-	fmt.Println("compress")
-}
+func compressFile(buffer []byte) []byte {
+	converted, err := bimg.NewImage(buffer).Convert(bimg.WEBP)
+	if err != nil {
+		exitErrorf("1111")
+	}
 
-func uploadFile() {
-	fmt.Println("Upload")
+	processed, err := bimg.NewImage(converted).Process(bimg.Options{Quality: 75})
+	if err != nil {
+		exitErrorf("2222")
+	}
+
+	return processed
 }
