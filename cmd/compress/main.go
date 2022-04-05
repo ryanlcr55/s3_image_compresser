@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -13,21 +14,17 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/h2non/bimg"
-)
-
-const (
-	region string = "ap-northeast-1"
-	bucket string = "ryan-li-practice"
-	// Sub floder
-	prefix string = ""
-
-	// If object Size greater than this value, then compress
-	boundarySize int = 1024 * 100
+	_ "github.com/joho/godotenv"
 )
 
 var wg sync.WaitGroup
 
 func main() {
+	region := os.Getenv("REGION")
+	bucket := os.Getenv("BUCKET_NAME")
+	prefix := os.Getenv("PREFIX")
+	boundarySize := os.Getenv("BOUNDARY_SIZE")
+	boundarySizeKB, _ := strconv.Atoi(boundarySize)
 
 	sess, _ := session.NewSession(&aws.Config{
 		Region: aws.String(region)},
@@ -46,7 +43,7 @@ func main() {
 	}
 
 	for _, item := range resp.Contents {
-		if int(*item.Size) > boundarySize {
+		if int(*item.Size) > boundarySizeKB {
 			wg.Add(1)
 			go handler(sess, item)
 		}
@@ -72,7 +69,7 @@ func handler(sess *session.Session, item *s3.Object) {
 
 	// Get file from S3
 	out, err := svc.GetObjectWithContext(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(bucket),
+		Bucket: aws.String(os.Getenv("BUCKET_NAME")),
 		Key:    aws.String(key),
 	})
 	if err != nil {
@@ -87,7 +84,7 @@ func handler(sess *session.Session, item *s3.Object) {
 
 	// Update the compressed File
 	_, putFileErr := svc.PutObject(&s3.PutObjectInput{
-		Bucket: aws.String(bucket),
+		Bucket: aws.String(os.Getenv("BUCKET_NAME")),
 		Key:    aws.String(key),
 		Body:   bytes.NewReader(processed),
 	})
