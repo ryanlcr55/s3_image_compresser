@@ -73,11 +73,11 @@ func handler(sess *session.Session, item *s3.Object) {
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		exitErrorf("Unable to Down File Key: %q, %v", key, err)
+		exitErrorf("Unable to Download File Key: %q, %v", key, err)
 	}
 	buffer, bufferErr := io.ReadAll(out.Body)
 	if bufferErr != nil {
-		exitErrorf("Cant buffer the file", key, err)
+		exitErrorf("Unable to buffer the file", key, err)
 	}
 
 	processed := compressFile(buffer)
@@ -97,12 +97,12 @@ func handler(sess *session.Session, item *s3.Object) {
 func compressFile(buffer []byte) []byte {
 	converted, err := bimg.NewImage(buffer).Convert(bimg.WEBP)
 	if err != nil {
-		exitErrorf("1111")
+		exitErrorf("Covert Failed")
 	}
 
 	processed, err := bimg.NewImage(converted).Process(bimg.Options{Quality: 75})
 	if err != nil {
-		exitErrorf("2222")
+		exitErrorf("Process Failed")
 	}
 
 	return processed
