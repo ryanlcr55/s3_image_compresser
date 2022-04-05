@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/h2non/bimg"
-	_ "github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 var wg sync.WaitGroup
@@ -80,13 +80,13 @@ func handler(sess *session.Session, item *s3.Object) {
 		exitErrorf("Unable to buffer the file", key, err)
 	}
 
-	processed := compressFile(buffer)
+	compressFile(&buffer)
 
 	// Update the compressed File
 	_, putFileErr := svc.PutObject(&s3.PutObjectInput{
 		Bucket: aws.String(os.Getenv("BUCKET_NAME")),
 		Key:    aws.String(key),
-		Body:   bytes.NewReader(processed),
+		Body:   bytes.NewReader(buffer),
 	})
 	if err != putFileErr {
 		exitErrorf(" buffer fail", key, err)
@@ -94,16 +94,14 @@ func handler(sess *session.Session, item *s3.Object) {
 	defer out.Body.Close()
 }
 
-func compressFile(buffer []byte) []byte {
-	converted, err := bimg.NewImage(buffer).Convert(bimg.WEBP)
+func compressFile(buffer *[]byte) {
+	converted, err := bimg.NewImage(*buffer).Convert(bimg.WEBP)
 	if err != nil {
 		exitErrorf("Covert Failed")
 	}
 
-	processed, err := bimg.NewImage(converted).Process(bimg.Options{Quality: 75})
+	*buffer, err = bimg.NewImage(converted).Process(bimg.Options{Quality: 75})
 	if err != nil {
 		exitErrorf("Process Failed")
 	}
-
-	return processed
 }
