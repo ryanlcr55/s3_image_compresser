@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -63,16 +64,13 @@ func handler(sess *session.Session, item *s3.Object) {
 	defer wg.Done()
 	fmt.Println("Processing Name:         ", *item.Key)
 
-	downLoadFile(sess, *item.Key)
-}
-
-func downLoadFile(sess *session.Session, key string) {
-	fmt.Println("download")
+	key := *item.Key
 	svc := s3.New(sess)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(30)*time.Second)
 	defer cancel()
 
+	// Get file from S3
 	out, err := svc.GetObjectWithContext(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
@@ -86,8 +84,16 @@ func downLoadFile(sess *session.Session, key string) {
 	}
 
 	processed := compressFile(buffer)
-	fmt.Println(processed)
 
+	// Update the compressed File
+	_, putFileErr := svc.PutObject(&s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+		Body:   bytes.NewReader(processed),
+	})
+	if err != putFileErr {
+		exitErrorf(" buffer fail", key, err)
+	}
 	defer out.Body.Close()
 }
 
