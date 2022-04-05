@@ -3,16 +3,22 @@ package main
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
+var wg sync.WaitGroup
+
 func main() {
 	//bucket name
 	bucket := "ryan-li-practice"
-	prefix := "test"
+	// Sub floder
+	prefix := ""
+	// If object Size greater than this value, then compress
+	boundarySize := 1024 * 100
 
 	sess, _ := session.NewSession(&aws.Config{
 		Region: aws.String("ap-northeast-1")},
@@ -27,17 +33,42 @@ func main() {
 	}
 
 	for _, item := range resp.Contents {
-		fmt.Println("Name:         ", *item.Key)
-		fmt.Println("Last modified:", *item.LastModified)
-		fmt.Println("Size:         ", *item.Size)
-		fmt.Println("Storage class:", *item.StorageClass)
-		fmt.Println("")
+		if int(*item.Size) > boundarySize {
+			wg.Add(1)
+			go handler(item)
+		}
 	}
-	fmt.Println("Found", len(resp.Contents), "items in bucket", bucket)
-	fmt.Println("")
+	wg.Wait()
+	fmt.Println("Done")
 }
 
 func exitErrorf(msg string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, msg+"\n", args...)
 	os.Exit(1)
+}
+
+func handler(item *s3.Object) {
+
+	fmt.Println("Name:         ", *item.Key)
+	//	fmt.Println("Last modified:", *item.LastModified)
+	//	fmt.Println("Size:         ", *item.Size)
+	//	fmt.Println("Storage class:", *item.StorageClass)
+	//	fmt.Println("")
+
+	downLoadFile()
+	compressFile()
+	uploadFile()
+	wg.Done()
+}
+
+func downLoadFile() {
+	fmt.Println("download")
+}
+
+func compressFile() {
+	fmt.Println("compress")
+}
+
+func uploadFile() {
+	fmt.Println("Upload")
 }
