@@ -88,7 +88,7 @@ func handler(sess *session.Session, item *s3.Object) {
 		Key:    aws.String(key),
 		Body:   bytes.NewReader(buffer),
 	})
-	if err != putFileErr {
+	if putFileErr != nil {
 		exitErrorf(" buffer fail", key, err)
 	}
 	defer out.Body.Close()
