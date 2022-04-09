@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -17,8 +16,6 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
-var wg sync.WaitGroup
-
 func main() {
 	region := os.Getenv("REGION")
 	bucket := os.Getenv("BUCKET_NAME")
@@ -27,8 +24,8 @@ func main() {
 	boundarySizeKB, _ := strconv.Atoi(boundarySize)
 
 	sess, _ := session.NewSession(&aws.Config{
-		Region: aws.String(region)},
-	)
+		Region: aws.String(region),
+	})
 
 	// Create S3 service client
 	svc := s3.New(sess)
@@ -44,11 +41,9 @@ func main() {
 
 	for _, item := range resp.Contents {
 		if int(*item.Size) > boundarySizeKB {
-			wg.Add(1)
-			go handler(sess, item)
+			handler(sess, item)
 		}
 	}
-	wg.Wait()
 	fmt.Println("Done")
 }
 
@@ -58,7 +53,6 @@ func exitErrorf(msg string, args ...interface{}) {
 }
 
 func handler(sess *session.Session, item *s3.Object) {
-	defer wg.Done()
 	fmt.Println("Processing Name:         ", *item.Key)
 
 	key := *item.Key
